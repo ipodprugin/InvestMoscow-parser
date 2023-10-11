@@ -44,30 +44,46 @@ async def create_folder(session, path):
         return response.status, await response.json()
 
 
-async def upload_file_from_web(session, url, path):
+async def upload_file_from_web(session, imageurl, path):
     url = 'https://cloud-api.yandex.net/v1/disk/resources/upload'
     params = {
-        'url': url,
+        'url': imageurl,
         'path': path
     }
-    async with session.put(url, params=params) as response:
+    async with session.post(url, params=params) as response:
         return response.status, await response.json()
 
 
-async def get_operation_status(session, path):
-    ...
+async def get_operation_status(session, url):
+    async with session.get(url) as response:
+        resp = await response.json()
+        return resp['status']
 
 
 async def upload_files(session, path, images):
+    status_links = {}
+    upload_error = {}
     for image in images:
         status, response = await upload_file_from_web(
             session,
             image.url,
             f'{path}/{image.file_base.name}'
         )
+        if status == 202:
+            status_links[image.url] = response['href']
+        else:
+            upload_error[image.url] = response
         print('upload', response, status)
-        async with session.get(response['href']) as response:
-            print('statue', await response.json())
+    return status_links, upload_error
+
+
+async def check_images_upload_status(session, images_status_links):
+    # in_progress = {}
+    for tender_id, images in images_status_links.items():
+        for imageurl, statusurl in images.items(): 
+            async with session.get(statusurl) as response:
+                resp = await response.json()
+                print('statue', resp['status'], imageurl, statusurl)
 
 
 async def main():
@@ -76,18 +92,20 @@ async def main():
     path = f'app:/parking_spaces/{tender_id}'
 
     images = get_images_list()
+    images_status_links = {}
     async with aiohttp.ClientSession(headers=headers) as session:
         status, response = await create_folder(session, 'app:/parking_spaces')
         if status != 201 and status != 409:
             print('Cant create folder:', response)
             return
         if status == 201:
+            # for tender in tenders:
             status, response = await create_folder(session, path=path)
             if status != 201:
                 print('Cant create folder:', response)
                 return
-            # for tender in tenders:
-            await upload_files(session, path, images)
+            status_links, upload_error = await upload_files(session, path, images)
+            images_status_links[tender_id] = status_links
         else:
             status, response = await get_item_info(session, path=path)
             if status == 404:
@@ -95,7 +113,11 @@ async def main():
                 if status != 201:
                     print('Cant create folder:', response)
                     return
-            await upload_files(session, path, images)
+            status_links, upload_error = await upload_files(session, path, images)
+            images_status_links[tender_id] = status_links
+            print(images_status_links)
+        
+        await check_images_upload_status(session, images_status_links)
             
     with open('disk.json', 'w', encoding='utf-8') as f:
         f.write(json.dumps(response, ensure_ascii=False, indent=4))
