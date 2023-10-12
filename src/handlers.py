@@ -4,14 +4,14 @@ import json
 conn = http.client.HTTPSConnection('api.investmoscow.ru')
 
 
-def get_tenders(page_number, page_size):
+def get_tenders(page_number, page_size, objtype_id):
     payload = """
     {
         "pageNumber": %d,
         "pageSize": %d,
         "orderBy": "Relevance",
         "orderAsc": false,
-        "objectTypes": ["nsi:41:30011578"],
+        "objectTypes": ["nsi:41:%d"],
         "tenderStatus": "nsi:tender_status_tender_filter:1",
         "timeToPublicTransportStop": {
             "noMatter": true
@@ -39,7 +39,7 @@ def get_tenders(page_number, page_size):
     conn.request(
         'POST', 
         api_url, 
-        payload % (page_number, page_size), 
+        payload % (page_number, page_size, objtype_id), 
         headers
     )
 

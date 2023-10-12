@@ -31,7 +31,7 @@ class ObjectInfoItem(BaseModel):
 
 class ProcedureInfoItem(BaseModel):
     label: str
-    value: str
+    value: Optional[str] = Field(None, alias='value')
     user_action: Optional[str] = Field(None, alias='userAction')
 
 
@@ -42,3 +42,19 @@ class Tender(BaseTender):
     procedure_info: Optional[List[ProcedureInfoItem]] = Field(
         None, alias='procedureInfo'
     )
+
+
+class AttachedImageSnakeCase(BaseModel):
+    tender_id: int = Field(..., alias='tender_id')
+    is_main_photo: bool = Field(..., alias='is_main_photo')
+    url: str
+    file_base: FileBase = Field(..., alias='file_base')
+
+
+class TenderImagesInfo(BaseModel):
+    tender_id: int = Field(..., alias='tender_id')
+    attached_images: List[AttachedImageSnakeCase] = Field(..., alias='attached_images')
+
+
+class TenderImages(BaseModel):
+    images: List[TenderImagesInfo]
