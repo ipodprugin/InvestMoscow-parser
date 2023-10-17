@@ -166,7 +166,13 @@ async def main(objtype):
             copy_head=False,
             escape_formulae=True
         )
-    await upload_images(objtype)
+
+    if objtype == settings.PARK_OBJTYPE_ID:
+        folder = 'parking_spaces'
+    else:
+        folder = 'nonresidential'
+
+    await upload_images(folder)
 
 if __name__ == '__main__':
     types = {'1': 'машиноместа', '2': 'нежилые помещения'}
@@ -190,3 +196,16 @@ if __name__ == '__main__':
             print('Выход...')
             sys.exit()
     asyncio.run(main(objtype))
+
+    # from images import collect_images_links_for_avito
+    
+    # sa = pygsheets.authorize(service_file=settings.GSHEETS_CREDS_PATH)
+    # sh = sa.open_by_url(settings.GSHEETURL)
+    # worksheet = settings.PARKING_PLACES_WORKSHEET_NAME if objtype == settings.PARK_OBJTYPE_ID else settings.NONRESIDENTIAL_SPACES_WORKSHEET_NAME
+    # worksheet = sh.worksheet_by_title(worksheet)
+    
+    # if objtype == settings.PARK_OBJTYPE_ID:
+    #     folder = 'parking_spaces'
+    # else:
+    #     folder = 'nonresidential'
+    # collect_images_links_for_avito(worksheet=worksheet, foldername=folder)

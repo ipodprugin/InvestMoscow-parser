@@ -2,6 +2,7 @@ import aiohttp
 import asyncio
 import json
 
+from typing import Union, Optional
 from urllib.parse import urlencode
 
 from config import settings
@@ -20,10 +21,18 @@ async def get_drive_info(session):
         return response.status, await response.json()
 
 
-async def get_item_info(session, url=None, path=None):
-    params = {
-        'fields': 'name,type,_embedded,_embedded.path,_embedded.items.path,_embedded.items.type,_embedded.items.name'
-    }
+# async def get_item_info(session, fields: Optional[Union[str, bool]] = None, url: Optional[str] = None, path: Optional[str] = None):
+async def get_item_info(
+    session,
+    fields: str | bool | None = None,
+    url: str | None = None,
+    path: str | None = None
+):
+    params = {}
+    if fields:
+        params['fields'] = fields
+    elif fields is None:
+        params['fields'] = 'name,type,_embedded,_embedded.path,_embedded.items.path,_embedded.items.type,_embedded.items.name,_embedded.items.file'
     if not url:
         params['path'] = path
         url = 'https://cloud-api.yandex.net/v1/disk/resources'
@@ -90,18 +99,14 @@ async def check_images_upload_status(session, images_status_links):
     return {'attached_images': images_w_failed_status}
 
 
-async def upload_images(objtype, tenders=None):
-    headers =  {'accept': 'application/json', 'Authorization': f'OAuth {settings.YADISK_OAUTH_TOKEN}'}
-    if objtype == settings.PARK_OBJTYPE_ID:
-        folder = 'parking_spaces'
-    else:
-        folder = 'nonresidential'
+async def upload_images(folder, tenders=None):
     basepath = f'app:/{folder}'
+    DISK_AUTH_HEADERS: str = {'accept': 'application/json', 'Authorization': 'OAuth %s' % settings.YADISK_OAUTH_TOKEN}
 
     if not tenders:
         tenders = get_tenders_list()
     images_status_links = []
-    async with aiohttp.ClientSession(headers=headers) as session:
+    async with aiohttp.ClientSession(headers=DISK_AUTH_HEADERS) as session:
         status, response = await create_folder(session, basepath)
         if status != 201 and status != 409:
             print('Cant create folder:', response)
@@ -128,7 +133,7 @@ async def upload_images(objtype, tenders=None):
                     images_status_links.append({'attached_images': status_links})
         print(images_status_links)
         
-        for i in range(5):
+        for i in range(2):
             failed_images = await check_images_upload_status(session, images_status_links)
             if not failed_images:
                 break
