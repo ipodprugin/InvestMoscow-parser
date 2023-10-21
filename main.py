@@ -155,7 +155,10 @@ async def main(objtype):
     sheet = pd.DataFrame(worksheet.get_all_records())
     parsed = pd.DataFrame(tenders)
     newdf = merge_data_to_sheet(sheet, parsed, on='tender_id', columns_order=settings.PARKING_SHEET_COLUMNS if objtype == settings.PARK_OBJTYPE_ID else settings.NONRESIDENTIAL_SHEET_COLUMNS)
-
+    if objtype == settings.PARK_OBJTYPE_ID:
+        newdf[['№', 'Колличество', 'Площадь', 'Начальная цена', 'Задаток']] = newdf[['№', 'Колличество', 'Площадь', 'Начальная цена', 'Задаток']].astype(int)
+    else:
+        newdf[['№', 'Площадь', 'Начальная цена', 'Задаток', 'Цена за кв м', 'Рыночная']] = newdf[['№', 'Площадь', 'Начальная цена', 'Задаток', 'Цена за кв м', 'Рыночная']].astype(int)
     with open('photos.json', 'w', encoding='utf-8') as f:
         json.dump({'images': tenders_photos}, f, ensure_ascii=False, indent=4)
     
@@ -194,11 +197,33 @@ async def main(objtype):
     await collect_images_links(worksheet, folder)
 
 if __name__ == '__main__':
-    types = {'1': 'машиноместа', '2': 'нежилые помещения'}
+    # types = {'1': 'машиноместа', '2': 'нежилые помещения'}
+    # choosing = True
+    # while choosing:
+    #     objtype = input('Выберите что парсить: 1 - машиноместа, 2 - нежилые помещения\nВведите число или нажмите Enter для выхода: ')
+    #     if objtype in ['1', '2']:
+    #         while True:
+    #             confirm = input(f'Парсим {types[objtype]}? (y/n): ')
+    #             if confirm == 'n':
+    #                 break
+    #             elif confirm == 'y':
+    #                 if objtype == '1':
+    #                     objtype = settings.PARK_OBJTYPE_ID
+    #                 if objtype == '2':
+    #                     objtype = settings.NONRESIDENTIAL_OBJTYPE_ID
+    #                 choosing = False
+    #                 break
+    #     elif objtype == '':
+    #         import sys
+    #         print('Выход...')
+    #         sys.exit()
+    # asyncio.run(main(objtype))
+
+    types = {'1': 'машиноместа', '2': 'нежилые помещения', '3': 'всё'}
     choosing = True
     while choosing:
-        objtype = input('Выберите что парсить: 1 - машиноместа, 2 - нежилые помещения\nВведите число или нажмите Enter для выхода: ')
-        if objtype in ['1', '2']:
+        objtype = input('Выберите что парсить: 1 - машиноместа, 2 - нежилые помещения, 3 - всё\nВведите число или нажмите Enter для выхода: ')
+        if objtype in ['1', '2', '3']:
             while True:
                 confirm = input(f'Парсим {types[objtype]}? (y/n): ')
                 if confirm == 'n':
@@ -206,12 +231,19 @@ if __name__ == '__main__':
                 elif confirm == 'y':
                     if objtype == '1':
                         objtype = settings.PARK_OBJTYPE_ID
-                    if objtype == '2':
+                    elif objtype == '2':
                         objtype = settings.NONRESIDENTIAL_OBJTYPE_ID
+                    elif objtype == '3':
+                        ...
+                        # objtype = [settings.PARK_OBJTYPE_ID, settings.NONRESIDENTIAL_OBJTYPE_ID]
                     choosing = False
                     break
         elif objtype == '':
             import sys
             print('Выход...')
             sys.exit()
-    asyncio.run(main(objtype))
+    if objtype == '3':
+        for id_ in [settings.PARK_OBJTYPE_ID, settings.NONRESIDENTIAL_OBJTYPE_ID]:
+            asyncio.run(main(id_))
+    else:
+        asyncio.run(main(objtype))
