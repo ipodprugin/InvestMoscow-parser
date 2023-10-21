@@ -3,6 +3,7 @@ import pygsheets
 import pandas as pd
 
 from datetime import datetime
+from collections import defaultdict
 
 from config import settings
 from src import handlers
@@ -97,33 +98,49 @@ def parse_objects_tenders(objects, parsed_objects, objects_photos, objtype):
             sheet_row['Цена за кв м'] = sheet_row['Рыночная'] / tender.object_area
         sheet_row['Ссылка на investmoscow'] = settings.BASEURL + tender.url
         sheet_row['Площадь'] = tender.object_area
-        parsed_objects.append(sheet_row)
+        parsed_objects[tender.id] = sheet_row
         # objects_photos[tender.id] = tender_details.image_info.attached_images
         images = tender_details.image_info.model_dump()
         images['tender_id'] = tender.id
-        objects_photos.append(images)
+        objects_photos[tender.id] = images
         print(sheet_row)
+
+
+def filter_duplicates_by_adress(parsed_objects, objects_photos):
+    tenders = []
+    photos = []
+    cache = defaultdict(lambda: defaultdict(int))
+    for key in parsed_objects:
+        address = parsed_objects[key]['Адрес']
+        square = cache[address]['Площадь']
+        new_square = parsed_objects[key]['Площадь']
+        if square == 0 or new_square < square:
+            square = new_square
+            cache[address]['tender_id'] = key
+        cache[address]['Площадь'] = square
+    for key in cache:
+        tenders.append(parsed_objects[cache[key]['tender_id']])
+        photos.append(objects_photos[cache[key]['tender_id']])
+    return tenders, photos
 
 
 def parse_tenders(objtype):
     objects = handlers.get_tenders(settings.PAGENUMBER, settings.PAGESIZE, objtype)
-    # with open('objects.json', 'r', encoding='utf-8') as f:
-        # objects = json.loads(f.read())
     with open('objects.json', 'w', encoding='utf-8') as f:
         json.dump(objects, f, ensure_ascii=False, indent=4)
     total_count = objects['totalCount']
 
     total_pages_count = total_count // settings.PAGESIZE + (1 if total_count % settings.PAGESIZE else 0) 
 
-    parsed_objects = []
-    objects_photos = []
+    parsed_objects = {}
+    objects_photos = {}
     parse_objects_tenders(objects, parsed_objects, objects_photos, objtype)
     for pagenum in range(settings.PAGENUMBER + 1, total_pages_count + 1):
         objects = handlers.get_tenders(pagenum, settings.PAGESIZE, objtype)
         with open('objects.json', 'a', encoding='utf-8') as f:
             json.dump(objects, f, ensure_ascii=False, indent=4)
         parse_objects_tenders(objects, parsed_objects, objects_photos, objtype)
-    return parsed_objects, objects_photos
+    return filter_duplicates_by_adress(parsed_objects, objects_photos)
 
 
 async def main(objtype):
@@ -196,16 +213,3 @@ if __name__ == '__main__':
             print('Выход...')
             sys.exit()
     asyncio.run(main(objtype))
-
-    # from images import collect_images_links_for_avito
-    
-    # sa = pygsheets.authorize(service_file=settings.GSHEETS_CREDS_PATH)
-    # sh = sa.open_by_url(settings.GSHEETURL)
-    # worksheet = settings.PARKING_PLACES_WORKSHEET_NAME if objtype == settings.PARK_OBJTYPE_ID else settings.NONRESIDENTIAL_SPACES_WORKSHEET_NAME
-    # worksheet = sh.worksheet_by_title(worksheet)
-    
-    # if objtype == settings.PARK_OBJTYPE_ID:
-    #     folder = 'parking_spaces'
-    # else:
-    #     folder = 'nonresidential'
-    # collect_images_links_for_avito(worksheet=worksheet, foldername=folder)
