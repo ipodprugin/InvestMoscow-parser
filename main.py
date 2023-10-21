@@ -8,9 +8,10 @@ from collections import defaultdict
 from config import settings
 from src import handlers
 from src.pandas_helpers import merge_data_to_sheet
+from src.upload_images import upload_images
+from images import collect_images_links
 from models.tender_models import Tender
 from models.tenders_list_models import BaseTender
-from src.upload_images import upload_images
 
 import json
 
@@ -190,6 +191,7 @@ async def main(objtype):
         folder = 'nonresidential'
 
     await upload_images(folder)
+    await collect_images_links(worksheet, folder)
 
 if __name__ == '__main__':
     types = {'1': 'машиноместа', '2': 'нежилые помещения'}

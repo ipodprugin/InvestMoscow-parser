@@ -24,20 +24,31 @@ async def get_drive_info(session):
 # async def get_item_info(session, fields: Optional[Union[str, bool]] = None, url: Optional[str] = None, path: Optional[str] = None):
 async def get_item_info(
     session,
-    fields: str | bool | None = None,
     url: str | None = None,
     path: str | None = None
 ):
     params = {}
-    if fields:
-        params['fields'] = fields
-    elif fields is None:
-        params['fields'] = 'name,type,_embedded,_embedded.path,_embedded.items.path,_embedded.items.type,_embedded.items.name,_embedded.items.file'
     if not url:
         params['path'] = path
         url = 'https://cloud-api.yandex.net/v1/disk/resources'
     async with session.get(url, params=params) as response:
         return response.status, await response.json()
+
+
+async def publish_item(session, path: str):
+    params = {'path': path}
+    url = 'https://cloud-api.yandex.net/v1/disk/resources/publish'
+    async with session.put(url, params=params) as response:
+        return response.status, await response.json()
+
+
+async def publish_items(session, path: str):
+    status, response = await get_item_info(session=session, path=path)
+    print(status, response)
+    if status == 200:
+        for image in response['_embedded']['items']:
+            status, response = await publish_item(session=session, path=f'{path}/{image["name"]}')
+            print(status, response)
 
 
 async def create_folder(session, path):
