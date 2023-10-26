@@ -156,9 +156,9 @@ async def main(objtype):
     parsed = pd.DataFrame(tenders)
     newdf = merge_data_to_sheet(sheet, parsed, on='tender_id', columns_order=settings.PARKING_SHEET_COLUMNS if objtype == settings.PARK_OBJTYPE_ID else settings.NONRESIDENTIAL_SHEET_COLUMNS)
     if objtype == settings.PARK_OBJTYPE_ID:
-        newdf[['№', 'Колличество', 'Площадь', 'Начальная цена', 'Задаток']] = newdf[['№', 'Колличество', 'Площадь', 'Начальная цена', 'Задаток']].astype(int)
+        newdf[['№', 'Колличество', 'Площадь', 'Начальная цена', 'Задаток']] = newdf[['№', 'Колличество', 'Площадь', 'Начальная цена', 'Задаток']].astype(int, errors='ignore')
     else:
-        newdf[['№', 'Площадь', 'Начальная цена', 'Задаток', 'Цена за кв м', 'Рыночная']] = newdf[['№', 'Площадь', 'Начальная цена', 'Задаток', 'Цена за кв м', 'Рыночная']].astype(int)
+        newdf[['№', 'Площадь', 'Начальная цена', 'Задаток', 'Цена за кв м', 'Рыночная']] = newdf[['№', 'Площадь', 'Начальная цена', 'Задаток', 'Цена за кв м', 'Рыночная']].astype(int, errors='ignore')
     with open('photos.json', 'w', encoding='utf-8') as f:
         json.dump({'images': tenders_photos}, f, ensure_ascii=False, indent=4)
     
