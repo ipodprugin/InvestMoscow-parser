@@ -66,7 +66,13 @@ class Settings(BaseSettings):
         'Цена за кв м', 
         'Рыночная', 
         'Площадь',
-        'Вход'
+        'Вход',
+        'Шаг аукциона',
+        'Шаг понижения цены',
+        'Минимальная цена',
+        'Проведение торгов',
+        'Широта',
+        'Долгота',
     ]
     GET_PARKPLACE_REGEX: Pattern = re.compile(r"(м/м №|м/м|мм)\s*(.+)")
     GET_PRICE_REGEX: Pattern = re.compile(r"\d[\d ]+,?\d+")

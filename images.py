@@ -1,6 +1,7 @@
 import asyncio
 import aiohttp
 import pygsheets
+import json
 
 from config import settings
 from src.upload_images import get_item_info, publish_items
@@ -9,7 +10,6 @@ from src.upload_images import get_item_info, publish_items
 async def collect_images_links(worksheet, basefolder) -> list:
     DISK_AUTH_HEADERS: str = {'accept': 'application/json', 'Authorization': 'OAuth %s' % settings.YADISK_OAUTH_TOKEN}
     tenders_ids = worksheet.get_values_batch(['B:B'])[0][1:]
-    import json
     async with aiohttp.ClientSession(headers=DISK_AUTH_HEADERS) as session:
         images = []
         for tender_id in tenders_ids:
@@ -18,7 +18,7 @@ async def collect_images_links(worksheet, basefolder) -> list:
         for tender_id in tenders_ids:
             foldername = f'{basefolder}/{tender_id[0]}'
             status, response = await get_item_info(session=session, path='app:/' + foldername)
-            print(status, json.dumps(response, indent=4))
+            print(status, response)
             if status == 200:
                 _images = []
                 for image in response['_embedded']['items']:
@@ -26,7 +26,9 @@ async def collect_images_links(worksheet, basefolder) -> list:
                 images.append([' | '.join(_images)])
             else:
                 images.append([''])
-    sheet_column = 'Y' if basefolder == 'parking_spaces' else 'T'
+    sheet_column = 'Y' if basefolder == 'parking_spaces' else 'Z'
+    print('------------- SETTING IMGS ON SHEET ---------------')
+    print(f'{sheet_column}2\n\n', images)
     worksheet.update_values(f'{sheet_column}2', images)
     return images
 

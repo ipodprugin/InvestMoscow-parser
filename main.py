@@ -34,6 +34,14 @@ sheet_headers = [
     'площадь'
 ]
 
+def extract_price(price):
+    price = price.replace('\xa0', '')
+    price = settings.GET_PRICE_REGEX.findall(price)
+    if price:
+        price = float(price[0].replace(" ", "").replace(",", "."))
+    else:
+        price = 0
+    return price
 
 def parse_objects_tenders(objects, parsed_objects, objects_photos, objtype):
     for object_ in objects['entities']:
@@ -62,16 +70,23 @@ def parse_objects_tenders(objects, parsed_objects, objects_photos, objtype):
             parking_place = settings.GET_PARKPLACE_REGEX.findall(parking_place[0].value)
             parking_place = parking_place[0][-1] if parking_place else None
         else:
+            auction_step = list(filter(lambda x: x.label == 'Шаг аукциона', tender_details.procedure_info))
+            price_decrease_step  = list(filter(lambda x: x.label == 'Шаг понижения цены', tender_details.procedure_info))
+            min_price = list(filter(lambda x: x.label == 'Цена отсечения', tender_details.procedure_info))
+            prices_ = [item[0].value if item else None for item in (auction_step, price_decrease_step, min_price)]
+            for index, price_ in enumerate(prices_):
+                if price_:
+                    prices_[index] = extract_price(price_)
+                else:
+                    prices_[index] = 0
+            auction_step, price_decrease_step, min_price = prices_
             entrance_type = list(filter(lambda x: x.label == 'Тип входа', tender_details.object_info))
             entrance_type = entrance_type[0].value if entrance_type else None
+            tendering = list(filter(lambda x: x.label == 'Проведение торгов', tender_details.procedure_info))
+            tendering = tendering[0].value if tendering else None
 
         if deposit[0].value:
-            deposit = deposit[0].value.replace('\xa0', '')
-            deposit = settings.GET_PRICE_REGEX.findall(deposit)
-            if deposit:
-                deposit = float(deposit[0].replace(" ", "").replace(",", "."))
-            else:
-                deposit = 0
+            deposit = extract_price(deposit[0].value)
         else:
             deposit = 0
         form = form[0].value if form else None
@@ -87,7 +102,7 @@ def parse_objects_tenders(objects, parsed_objects, objects_photos, objtype):
         sheet_row['Начальная цена'] = tender.start_price if tender.start_price else deposit * 2
         sheet_row['Задаток'] = deposit
         sheet_row['Проведены'] = 'да' if datetime.now() >= end_date else 'нет'
-        sheet_row['Дата окончания приема заявок'] = end_date.strftime('%d.%m.%Y')
+        sheet_row['Дата окончания приема заявок'] = end_date.strftime('%d.%m.%Y %H:%M')
         sheet_row['Этаж'] = floor
         if objtype == settings.PARK_OBJTYPE_ID:
             sheet_row['Колличество'] = count
@@ -97,14 +112,26 @@ def parse_objects_tenders(objects, parsed_objects, objects_photos, objtype):
             sheet_row['Вход'] = entrance_type
             sheet_row['Рыночная'] = deposit * 10
             sheet_row['Цена за кв м'] = sheet_row['Рыночная'] / tender.object_area
+            sheet_row['Шаг аукциона'] = auction_step
+            sheet_row['Шаг понижения цены'] = price_decrease_step
+            sheet_row['Минимальная цена'] = min_price
+            sheet_row['Проведение торгов'] = tendering
         sheet_row['Ссылка на investmoscow'] = settings.BASEURL + tender.url
         sheet_row['Площадь'] = tender.object_area
+        try:
+            sheet_row['Широта'] = tender_details.map_info.coords.lat
+        except AttributeError:
+            sheet_row['Широта'] = 0
+        try:
+            sheet_row['Долгота'] = tender_details.map_info.coords.lon
+        except AttributeError:
+            sheet_row['Долгота'] = 0
         parsed_objects[tender.id] = sheet_row
         # objects_photos[tender.id] = tender_details.image_info.attached_images
         images = tender_details.image_info.model_dump()
         images['tender_id'] = tender.id
         objects_photos[tender.id] = images
-        print(sheet_row)
+        print(f"{sheet_row = }")
 
 
 def filter_duplicates_by_adress(parsed_objects, objects_photos):
@@ -158,7 +185,7 @@ async def main(objtype):
     if objtype == settings.PARK_OBJTYPE_ID:
         newdf[['№', 'Колличество', 'Площадь', 'Начальная цена', 'Задаток']] = newdf[['№', 'Колличество', 'Площадь', 'Начальная цена', 'Задаток']].astype(int, errors='ignore')
     else:
-        newdf[['№', 'Площадь', 'Начальная цена', 'Задаток', 'Цена за кв м', 'Рыночная']] = newdf[['№', 'Площадь', 'Начальная цена', 'Задаток', 'Цена за кв м', 'Рыночная']].astype(int, errors='ignore')
+        newdf[['№', 'Площадь', 'Начальная цена', 'Задаток', 'Цена за кв м', 'Рыночная', 'Шаг аукциона', 'Шаг понижения цены', 'Минимальная цена']] = newdf[['№', 'Площадь', 'Начальная цена', 'Задаток', 'Цена за кв м', 'Рыночная', 'Шаг аукциона', 'Шаг понижения цены', 'Минимальная цена']].astype(int, errors='ignore')
     with open('photos.json', 'w', encoding='utf-8') as f:
         json.dump({'images': tenders_photos}, f, ensure_ascii=False, indent=4)
     

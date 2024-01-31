@@ -35,6 +35,15 @@ class ProcedureInfoItem(BaseModel):
     user_action: Optional[str] = Field(None, alias='userAction')
 
 
+class Coords(BaseModel):
+    lat: float = Field(..., alias='lat')
+    lon: float = Field(..., alias='long')
+
+
+class MapInfoItem(BaseModel):
+    coords: Optional[Coords] = Field(None, alias='coords')
+
+
 class Tender(BaseTender):
     image_info: Optional[ImageInfo] = Field(None, alias='imageInfo')
     header_info: Optional[HeaderInfo] = Field(None, alias='headerInfo')
@@ -42,6 +51,7 @@ class Tender(BaseTender):
     procedure_info: Optional[List[ProcedureInfoItem]] = Field(
         None, alias='procedureInfo'
     )
+    map_info: Optional[MapInfoItem] = Field(None, alias='mapInfo')
 
 
 class AttachedImageSnakeCase(BaseModel):
